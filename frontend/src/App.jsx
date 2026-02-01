@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
-import { Upload, FileVideo, CheckCircle, Loader2, Video } from 'lucide-react'
+import { Upload, FileVideo, CheckCircle, Video } from 'lucide-react'
 
 let API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
 if (API_BASE && !API_BASE.startsWith('http')) {
@@ -14,7 +14,6 @@ function App() {
   const [progress, setProgress] = useState('waiting') // queued, processing, etc
   const [clips, setClips] = useState([])
   const [error, setError] = useState(null)
-  const [uploads, setUploads] = useState([])
 
   const [geminiKey, setGeminiKey] = useState(localStorage.getItem('clipper_gemini_key') || '')
   const [openaiKey, setOpenaiKey] = useState(localStorage.getItem('clipper_openai_key') || '')
@@ -22,43 +21,9 @@ function App() {
 
   const fileInputRef = useRef(null)
 
-  const fetchUploads = async () => {
-    try {
-      const res = await axios.get(`${API_BASE}/api/uploads`)
-      if (Array.isArray(res.data)) {
-        setUploads(res.data)
-      } else {
-        console.error("Expected array from /api/uploads, got:", typeof res.data, res.data)
-        // If we get HTML (which starts with <), it's likely a config error
-        if (typeof res.data === 'string' && res.data.trim().startsWith('<')) {
-          console.error("Received HTML instead of JSON. Check your VITE_API_BASE_URL.")
-        }
-      }
-    } catch (err) {
-      console.error("Failed to fetch uploads", err)
-    }
-  }
-
-  useEffect(() => {
-    fetchUploads()
-  }, [status]) // Refresh when status changes (e.g. back to idle)
-
   const handleFileChange = (e) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0])
-    }
-  }
-
-  const startProcessingExisting = async (path) => {
-    try {
-      setStatus('processing')
-      // Append key to query
-      const processRes = await axios.post(`${API_BASE}/api/process?path=${encodeURIComponent(path)}&gemini_api_key=${geminiKey}&openai_api_key=${openaiKey}`)
-      setJobId(processRes.data.job_id)
-    } catch (err) {
-      console.error(err)
-      setError(err.message)
-      setStatus('error')
     }
   }
 
@@ -125,7 +90,7 @@ function App() {
       <div className="max-w-4xl mx-auto">
         <header className="mb-12 text-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent mb-2">
-            AI Video Clipper
+            AI Video Clipper (Private Mode)
           </h1>
           <p className="text-slate-400">Turn long videos into viral shorts in minutes.</p>
           <button
@@ -233,70 +198,6 @@ function App() {
                   </div>
                 )}
               </div>
-
-              {/* Recent Uploads */}
-              {uploads.length > 0 && (
-                <div>
-                  <h2 className="text-2xl font-bold mb-6 text-slate-300">Resent Uploads</h2>
-                  <div className="grid grid-cols-1 gap-4">
-                    {uploads.map((upload, i) => (
-                      <div key={i} className="bg-slate-900 p-4 rounded-lg flex items-center justify-between border border-slate-800 hover:border-slate-700 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-24 h-16 bg-slate-800 rounded-lg overflow-hidden flex-shrink-0 relative">
-                            {upload.thumbnail ? (
-                              <img
-                                src={`${API_BASE}/static/${upload.thumbnail}`}
-                                alt={upload.filename}
-                                className="w-full h-full object-cover"
-                              />
-                            ) : (
-                              <div className="w-full h-full flex items-center justify-center">
-                                <FileVideo className="w-8 h-8 text-slate-600" />
-                              </div>
-                            )}
-                          </div>
-                          <div>
-                            <p className="font-medium text-slate-200 truncate max-w-[200px]" title={upload.filename}>{upload.filename}</p>
-                            <div className="flex items-center gap-2 mt-1 flex-wrap">
-                              <span className="text-xs text-slate-500">
-                                {new Date(upload.created_at * 1000).toLocaleDateString()}
-                              </span>
-
-                              {upload.has_transcript && (
-                                <span className="text-xs bg-emerald-900/50 text-emerald-400 px-2 py-0.5 rounded-full flex items-center gap-1 border border-emerald-900/50">
-                                  <CheckCircle className="w-3 h-3" /> Transcript Ready
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex flex-col gap-2 min-w-[140px]">
-                          {upload.clips && upload.clips.length > 0 && (
-                            <button
-                              onClick={() => {
-                                setClips(upload.clips)
-                                setStatus('done')
-                                window.scrollTo({ top: 0, behavior: 'smooth' })
-                              }}
-                              className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-2"
-                            >
-                              <Video className="w-4 h-4" />
-                              View {upload.clips.length} Clips
-                            </button>
-                          )}
-                          <button
-                            onClick={() => startProcessingExisting(upload.path)}
-                            className="bg-slate-800 hover:bg-purple-600 text-slate-300 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                          >
-                            {upload.clips && upload.clips.length > 0 ? 'Regenerate' : 'Generate Clips'}
-                          </button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
             </div>
           )}
 

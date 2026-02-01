@@ -115,11 +115,19 @@ def run_pipeline_task(job_id: str, file_path: str, api_key: str, openai_key: str
 
 @app.post("/api/upload")
 def upload_video(file: UploadFile = File(...)):
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    import uuid
+    # Use UUID for filename to prevent guessing and collisions
+    ext = os.path.splitext(file.filename)[1]
+    if not ext:
+        ext = ".mp4"
+    
+    unique_name = f"{uuid.uuid4()}{ext}"
+    file_path = os.path.join(UPLOAD_DIR, unique_name)
+    
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
     
-    return {"filename": file.filename, "path": file_path}
+    return {"filename": unique_name, "path": file_path, "original_name": file.filename}
 
 @app.post("/api/process")
 async def process_video(background_tasks: BackgroundTasks, path: str, gemini_api_key: str, openai_api_key: str):
@@ -127,7 +135,6 @@ async def process_video(background_tasks: BackgroundTasks, path: str, gemini_api
     openai_key = openai_api_key
     
     if not api_key:
-        # Fallback for local dev if they have it in .env, though frontend should send it
         api_key = os.getenv("GEMINI_API_KEY")
 
     if not openai_key:
@@ -144,7 +151,44 @@ async def process_video(background_tasks: BackgroundTasks, path: str, gemini_api
     save_jobs()
     
     background_tasks.add_task(run_pipeline_task, job_id, path, api_key, openai_key)
+    
+    # Trigger cleanup task
+    background_tasks.add_task(cleanup_old_files)
+    
     return {"job_id": job_id}
+
+def cleanup_old_files():
+    """Deletes files older than 1 hour."""
+    try:
+        now = time.time()
+        # 1 hour retention
+        retention = 3600 
+        
+        # Cleanup UPLOAD_DIR
+        for f in os.listdir(UPLOAD_DIR):
+            f_path = os.path.join(UPLOAD_DIR, f)
+            if os.path.isfile(f_path):
+                if os.stat(f_path).st_mtime < now - retention:
+                    print(f"Deleting old file: {f}")
+                    os.remove(f_path)
+                    
+        # Cleanup OUTPUT_DIR (jobs.json, run folders)
+        # Note: jobs.json needs to be handled carefully, maybe don't delete it or it wipes job history for everyone?
+        # For strict privacy we should probably wipe it or not use a single file. 
+        # But for now let's just clean up job directories.
+        
+        for f in os.listdir(OUTPUT_DIR):
+            f_path = os.path.join(OUTPUT_DIR, f)
+            if os.path.isdir(f_path) and f.startswith("run_"):
+                 if os.path.getmtime(f_path) < now - retention:
+                     print(f"Deleting old run: {f}")
+                     shutil.rmtree(f_path)
+                     
+            # Also clean up generated clip folders inside uploads if we used that structure
+            # (Current structure puts runs in output_dir, but older structure put them in uploads)
+            
+    except Exception as e:
+        print(f"Cleanup error: {e}")
 
 @app.get("/api/jobs/{job_id}")
 async def get_job_status(job_id: str):
@@ -154,82 +198,8 @@ async def get_job_status(job_id: str):
 
 @app.get("/api/uploads")
 def get_uploads():
-    files = []
-    if not os.path.exists(UPLOAD_DIR):
-        return []
-        
-    for filename in os.listdir(UPLOAD_DIR):
-        if filename.endswith(".transcript.txt") or filename.endswith(".jpg"):
-            continue
-            
-        # Is it a media file?
-        low_f = filename.lower()
-        if low_f.endswith(('.mp4', '.mkv', '.avi', '.mov', '.mp3', '.wav')):
-            file_path = os.path.join(UPLOAD_DIR, filename)
-            transcript_path = file_path + ".transcript.txt"
-            
-            # Generate thumbnail if video and missing
-            thumb_filename = filename + ".jpg"
-            thumb_path = os.path.join(UPLOAD_DIR, thumb_filename)
-            
-            # Only try generating for video types, and if not exists
-            if not os.path.exists(thumb_path) and not low_f.endswith(('.mp3', '.wav')):
-                try:
-                    import ffmpeg
-                    # Extract frame at 1s, scale to 320 width
-                    (
-                        ffmpeg
-                        .input(file_path, ss=1)
-                        .filter('scale', 320, -1)
-                        .output(thumb_path, vframes=1)
-                        .overwrite_output()
-                        .run(quiet=True, cmd=imageio_ffmpeg.get_ffmpeg_exe())
-                    )
-                except Exception as e:
-                    print(f"Failed to generate thumb for {filename}: {e}")
-
-            has_thumb = os.path.exists(thumb_path)
-            
-            # Check for existing clips
-            run_dir = file_path + "_data"
-            clips_dir = os.path.join(run_dir, "clips")
-            clips_json_path = os.path.join(run_dir, "clips.json")
-            existing_clips = []
-            
-            if os.path.exists(clips_json_path):
-                try:
-                    with open(clips_json_path, "r") as f:
-                        meta_clips = json.load(f)
-                        
-                    for clip in meta_clips:
-                        if "filename" in clip:
-                            full_p = os.path.join(clips_dir, clip["filename"])
-                            if os.path.exists(full_p):
-                                clip["path"] = os.path.relpath(full_p, OUTPUT_DIR)
-                                existing_clips.append(clip)
-                except Exception as e:
-                    print(f"Error loading clips.json for {filename}: {e}")
-                    
-            # Fallback: if json failed or didn't exist, but dir has files
-            if not existing_clips and os.path.exists(clips_dir):
-                for c in sorted(os.listdir(clips_dir)):
-                    if c.endswith(".mp4"):
-                        full_p = os.path.join(clips_dir, c)
-                        rel = os.path.relpath(full_p, OUTPUT_DIR)
-                        existing_clips.append({"path": rel, "title": "Clip", "transcript_text": ""})
-
-            files.append({
-                "filename": filename,
-                "path": file_path,
-                "thumbnail": f"uploads/{thumb_filename}" if has_thumb else None,
-                "has_transcript": os.path.exists(transcript_path),
-                "clips": existing_clips,
-                "created_at": os.path.getctime(file_path)
-            })
-    
-    # Sort by newest first
-    files.sort(key=lambda x: x["created_at"], reverse=True)
-    return files
+    # Privacy: Do not list uploads
+    return []
 
 # Serve output files (including clips)
 app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
