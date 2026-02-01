@@ -174,7 +174,7 @@ function App() {
                     </div>
                     <div>
                       <p className="text-lg font-medium">Click to upload video</p>
-                      <p className="text-sm text-slate-500">MP4, MKV supported</p>
+                      <p className="text-sm text-slate-500">MP4, MOV, MKV supported</p>
                     </div>
                   </div>
                 ) : (
