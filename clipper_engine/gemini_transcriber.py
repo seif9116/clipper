@@ -25,7 +25,7 @@ class GeminiTranscriber:
         # Check if file is too large? Gemini handles up to 2GB usually via File API.
         try:
             # We use the media upload API
-            file_ref = self.client.files.upload(path=video_path)
+            file_ref = self.client.files.upload(file=video_path)
             
             if progress_callback: progress_callback(30) # Uploaded
             

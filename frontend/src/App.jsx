@@ -2,7 +2,10 @@ import { useState, useEffect, useRef } from 'react'
 import axios from 'axios'
 import { Upload, FileVideo, CheckCircle, Loader2, Video } from 'lucide-react'
 
-const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+let API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000';
+if (API_BASE && !API_BASE.startsWith('http')) {
+  API_BASE = `https://${API_BASE}`;
+}
 
 function App() {
   const [file, setFile] = useState(null)
@@ -19,7 +22,15 @@ function App() {
   const fetchUploads = async () => {
     try {
       const res = await axios.get(`${API_BASE}/api/uploads`)
-      setUploads(res.data)
+      if (Array.isArray(res.data)) {
+        setUploads(res.data)
+      } else {
+        console.error("Expected array from /api/uploads, got:", typeof res.data, res.data)
+        // If we get HTML (which starts with <), it's likely a config error
+        if (typeof res.data === 'string' && res.data.trim().startsWith('<')) {
+          console.error("Received HTML instead of JSON. Check your VITE_API_BASE_URL.")
+        }
+      }
     } catch (err) {
       console.error("Failed to fetch uploads", err)
     }
