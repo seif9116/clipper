@@ -1,6 +1,14 @@
 {
     "rewrites": [
         {
+            "source": "/clipper/(.*\\..+)",
+            "destination": "/$1"
+        },
+        {
+            "source": "/clipper/(.*)",
+            "destination": "/index.html"
+        },
+        {
             "source": "/((?!api/.*).*)",
             "destination": "/index.html"
         }
