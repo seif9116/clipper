@@ -27,9 +27,18 @@ load_dotenv()
 app = FastAPI()
 
 # CORS
+# CORS
+origins = [
+    "http://localhost:5173",  # Local Vite frontend
+    "http://localhost:3000",  # Local alternative
+    "https://seifeldin.ca",
+    "https://www.seifeldin.ca",
+    "https://clipper-weld-ten.vercel.app", # Vercel deployment
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
