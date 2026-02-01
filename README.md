@@ -13,6 +13,7 @@ uv pip install -r requirements.txt
 Set up API Key in `.env`:
 ```env
 GEMINI_API_KEY=your_key_here
+OPENAI_API_KEY=your_openai_key_here
 ```
 
 ### Manual Setup (without uv)
