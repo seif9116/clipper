@@ -31,6 +31,17 @@ class GeminiTranscriber:
             
             print(f"File uploaded: {file_ref.name}")
             
+            # Wait for file to be ready
+            import time
+            while True:
+                file_ref = self.client.files.get(name=file_ref.name)
+                if file_ref.state.name == "ACTIVE":
+                    break
+                elif file_ref.state.name == "FAILED":
+                    raise ValueError(f"File upload failed: {file_ref.state.name}")
+                print("Waiting for file processing...")
+                time.sleep(1)
+            
             # 2. Transcribe
             # We ask for a specific JSON structure to make parsing robust
             prompt = """
