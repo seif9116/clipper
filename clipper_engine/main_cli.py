@@ -1,7 +1,11 @@
 import argparse
 import os
 import sys
-from dotenv import load_dotenv
+try:
+    from dotenv import load_dotenv
+except ImportError:
+    def load_dotenv():
+        pass
 
 # Add project root to sys.path to ensure imports work
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -100,7 +104,7 @@ def main():
         
         # Render
         filename = f"clip_{i+1}_{clip.get('title').replace(' ', '_')}.mp4"
-        compositor.render_clip(video_path, start_sec, end_sec, crop_center, filename)
+        compositor.render_clip(video_path, start_sec, end_sec, filename)
         
     print("Done! Clips saved.")
 

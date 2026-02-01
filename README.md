@@ -15,10 +15,24 @@ Set up API Key in `.env`:
 GEMINI_API_KEY=your_key_here
 ```
 
+### Manual Setup (without uv)
+If you prefer not to use `uv`, you can use standard pip and venv:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
 ### 2. Command Line Interface
 Run directly on a video:
 ```bash
 uv run python clipper_engine/main_cli.py "https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
+```
+
+Or with manual venv:
+```bash
+source .venv/bin/activate
+python clipper_engine/main_cli.py "https://www.youtube.com/watch?v=YOUR_VIDEO_ID"
 ```
 
 ### 3. Web Interface

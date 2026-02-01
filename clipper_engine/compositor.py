@@ -22,6 +22,8 @@ class Compositor:
             "-i", video_path,
             "-t", str(end_time - start_time),
             "-c:v", "libx264",
+            "-preset", "veryfast",
+            "-threads", "2",
             "-c:a", "aac",
             "-strict", "experimental", 
             "-b:a", "192k",

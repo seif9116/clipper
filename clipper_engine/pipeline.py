@@ -1,6 +1,7 @@
 import os
 import time
 import shutil
+import gc
 from typing import List, Dict, Callable
 from .downloader import download_video
 from .transcriber import Transcriber
@@ -97,6 +98,9 @@ class ClipperPipeline:
             return []
             
         # 4. Render clips
+        # Force garbage collection to free up memory from potentially large transcript/audio objects
+        gc.collect()
+
         if progress_callback: progress_callback("rendering")
         compositor = Compositor(output_dir=clips_dir)
 
