@@ -1,0 +1,17 @@
+yt-dlp>=2023.10.13
+faster-whisper>=0.10.0
+google-genai>=0.3.0
+mediapipe>=0.10.0
+ffmpeg-python>=0.2.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+python-dotenv>=1.0.0
+pydantic>=2.0.0
+rich>=13.0.0
+imageio-ffmpeg>=0.4.9
+protobuf<4.0.0
+fastapi>=0.100.0
+uvicorn>=0.20.0
+python-multipart>=0.0.6
+openai>=1.0.0
+pydub>=0.25.1
