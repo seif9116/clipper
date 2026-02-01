@@ -90,7 +90,7 @@ function App() {
       <div className="max-w-4xl mx-auto">
         <header className="mb-12 text-center">
           <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-400 to-pink-600 bg-clip-text text-transparent mb-2">
-            AI Video Clipper (Private Mode)
+            AI Video Clipper
           </h1>
           <p className="text-slate-400">Turn long videos into viral shorts in minutes.</p>
           <button
