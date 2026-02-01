@@ -9,10 +9,10 @@ from .compositor import Compositor
 import imageio_ffmpeg
 
 class ClipperPipeline:
-    def __init__(self, output_base_dir: str, api_key: str):
+    def __init__(self, output_base_dir: str, api_key: str, openai_key: str = None):
         self.output_base = output_base_dir
         self.api_key = api_key
-        # openai_key removed as we are fully Gemini now
+        self.openai_key = openai_key
         
     def run(self, input_path: str, progress_callback: Callable[[str], None] = None, specific_run_dir: str = None) -> List[str]:
         """
@@ -66,17 +66,15 @@ class ClipperPipeline:
         else:
             if progress_callback: progress_callback("transcribing: preparing...")
             
-            if progress_callback: progress_callback("transcribing: preparing...")
-            
             def transcribe_progress(percent):
                 if progress_callback:
                     progress_callback(f"transcribing: {percent}%")
                     
-            # Use Gemini Transcriber if we have a key (we should always have one now)
-            from .gemini_transcriber import GeminiTranscriber
-            transcriber = GeminiTranscriber(api_key=self.api_key)
+            # Use Whisper Transcriber
+            from .transcriber import Transcriber
+            transcriber = Transcriber(api_key=self.openai_key)
             segments = transcriber.transcribe(video_path, progress_callback=transcribe_progress)
-            transcript_text = GeminiTranscriber.to_text_block(segments)
+            transcript_text = Transcriber.to_text_block(segments)
             
             # Cache it
             try:

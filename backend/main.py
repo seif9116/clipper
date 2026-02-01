@@ -68,7 +68,7 @@ class JobStatus(BaseModel):
     status: str
     clips: List[str] = []
 
-def run_pipeline_task(job_id: str, file_path: str, api_key: str):
+def run_pipeline_task(job_id: str, file_path: str, api_key: str, openai_key: str):
     jobs[job_id]["status"] = "processing"
     save_jobs()
     
@@ -81,7 +81,8 @@ def run_pipeline_task(job_id: str, file_path: str, api_key: str):
         # This allows us to find clips later for the same file
         run_dir = file_path + "_data"
         
-        pipeline = ClipperPipeline(output_base_dir=OUTPUT_DIR, api_key=api_key)
+        # Pass both keys to pipeline
+        pipeline = ClipperPipeline(output_base_dir=OUTPUT_DIR, api_key=api_key, openai_key=openai_key)
         clips = pipeline.run(file_path, progress_callback=update_progress, specific_run_dir=run_dir)
         
         # Store clips with metadata
@@ -121,28 +122,28 @@ def upload_video(file: UploadFile = File(...)):
     return {"filename": file.filename, "path": file_path}
 
 @app.post("/api/process")
-async def process_video(background_tasks: BackgroundTasks, path: str, gemini_api_key: str):
+async def process_video(background_tasks: BackgroundTasks, path: str, gemini_api_key: str, openai_api_key: str):
     api_key = gemini_api_key
+    openai_key = openai_api_key
     
     if not api_key:
         # Fallback for local dev if they have it in .env, though frontend should send it
         api_key = os.getenv("GEMINI_API_KEY")
+
+    if not openai_key:
+        openai_key = os.getenv("OPENAI_API_KEY")
         
     if not api_key:
         raise HTTPException(status_code=400, detail="Gemini API Key is required")
-        
-    # openai_key removed
     
-    if not api_key:
-        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not set")
-    # For now we allow openai_key to be None if they still wanted to use local, but we removed local support.
-    # So strictly ideally we check it, but let's let the library error out or rely on os.getenv inside the class default.
+    if not openai_key:
+        raise HTTPException(status_code=400, detail="OpenAI API Key is required")
 
     job_id = f"job_{int(time.time())}"
     jobs[job_id] = {"id": job_id, "status": "queued", "clips": []}
     save_jobs()
     
-    background_tasks.add_task(run_pipeline_task, job_id, path, api_key)
+    background_tasks.add_task(run_pipeline_task, job_id, path, api_key, openai_key)
     return {"job_id": job_id}
 
 @app.get("/api/jobs/{job_id}")
