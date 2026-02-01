@@ -11,7 +11,7 @@ class GeminiTranscriber:
             raise ValueError("Gemini API Key is required for transcription.")
             
         self.client = genai.Client(api_key=self.api_key)
-        self.model_name = "gemini-2.0-flash-exp" # Using flash-exp for best multimodal performance
+        self.model_name = "gemini-1.5-flash" # Stable, fast, good multimodal
 
     def transcribe(self, video_path: str, progress_callback: Callable[[int], None] = None) -> List[Dict[str, Any]]:
         """
