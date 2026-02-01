@@ -85,6 +85,35 @@ function App() {
     }
   }, [status, jobId])
 
+  const [isDragging, setIsDragging] = useState(false)
+
+  const handleDragOver = (e) => {
+    e.preventDefault()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+  }
+
+  const handleDrop = (e) => {
+    e.preventDefault()
+    setIsDragging(false)
+
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      const droppedFile = e.dataTransfer.files[0]
+      // Basic validation for video
+      if (droppedFile.type.startsWith('video/') || droppedFile.name.toLowerCase().endsWith('.mov')) {
+        setFile(droppedFile)
+        setError(null)
+      } else {
+        setError("Please upload a video file (MP4, MOV, MKV)")
+        setStatus('error')
+      }
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-8">
       <div className="max-w-4xl mx-auto">
@@ -155,7 +184,15 @@ function App() {
         <main>
           {status === 'idle' && (
             <div className="space-y-12">
-              <div className="border-2 border-dashed border-slate-700 rounded-xl p-12 text-center bg-slate-900/50 hover:bg-slate-900/80 transition-colors">
+              <div
+                className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${isDragging
+                    ? 'border-purple-500 bg-purple-900/20'
+                    : 'border-slate-700 bg-slate-900/50 hover:bg-slate-900/80'
+                  }`}
+                onDragOver={handleDragOver}
+                onDragLeave={handleDragLeave}
+                onDrop={handleDrop}
+              >
                 <input
                   type="file"
                   accept="video/*"
