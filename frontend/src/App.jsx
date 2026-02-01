@@ -330,6 +330,8 @@ function App() {
                         <a
                           href={`${API_BASE}/static/${clip.path}`}
                           download
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="block w-full text-center bg-slate-800 hover:bg-slate-700 py-2 rounded text-sm font-medium transition-colors"
                         >
                           Download
