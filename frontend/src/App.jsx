@@ -15,9 +15,9 @@ function App() {
   const [clips, setClips] = useState([])
   const [error, setError] = useState(null)
 
-  const [geminiKey, setGeminiKey] = useState(localStorage.getItem('clipper_gemini_key') || '')
-  const [openaiKey, setOpenaiKey] = useState(localStorage.getItem('clipper_openai_key') || '')
-  const [showKeyModal, setShowKeyModal] = useState(!localStorage.getItem('clipper_gemini_key') || !localStorage.getItem('clipper_openai_key'))
+  const [geminiKey, setGeminiKey] = useState(sessionStorage.getItem('clipper_gemini_key') || '')
+  const [openaiKey, setOpenaiKey] = useState(sessionStorage.getItem('clipper_openai_key') || '')
+  const [showKeyModal, setShowKeyModal] = useState(!sessionStorage.getItem('clipper_gemini_key') || !sessionStorage.getItem('clipper_openai_key'))
 
   const fileInputRef = useRef(null)
 
@@ -138,8 +138,8 @@ function App() {
               <button
                 onClick={() => {
                   if (geminiKey.trim() && openaiKey.trim()) {
-                    localStorage.setItem('clipper_gemini_key', geminiKey.trim())
-                    localStorage.setItem('clipper_openai_key', openaiKey.trim())
+                    sessionStorage.setItem('clipper_gemini_key', geminiKey.trim())
+                    sessionStorage.setItem('clipper_openai_key', openaiKey.trim())
                     setShowKeyModal(false)
                   }
                 }}
