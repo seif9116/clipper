@@ -21,7 +21,10 @@ class Compositor:
             "-ss", str(start_time),
             "-i", video_path,
             "-t", str(end_time - start_time),
-            "-c", "copy",
+            "-c:v", "libx264",
+            "-c:a", "aac",
+            "-strict", "experimental", 
+            "-b:a", "192k",
             output_path
         ]
 
