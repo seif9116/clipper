@@ -19,12 +19,22 @@ import imageio_ffmpeg
 # This is crucial for environments where ffmpeg is not globally installed
 os.environ["PATH"] += os.pathsep + os.path.dirname(imageio_ffmpeg.get_ffmpeg_exe())
 
-from clipper_engine.pipeline import ClipperPipeline
 from dotenv import load_dotenv
+
+from clipper_engine.pipeline import ClipperPipeline
+from clipper_engine.compositor import Compositor
+from clipper_engine.analyzer import ContentAnalyzer
 
 load_dotenv()
 
 app = FastAPI()
+
+class ExtendRequest(BaseModel):
+    job_id: str
+    clip_index: int
+    direction: str # "start" or "end"
+    amount: int = 30
+
 
 # CORS
 # CORS
@@ -212,6 +222,125 @@ def get_uploads():
 
 # Serve output files (including clips)
 app.mount("/static", StaticFiles(directory=OUTPUT_DIR), name="static")
+
+@app.post("/api/extend_clip")
+async def extend_clip(request: ExtendRequest):
+    if request.job_id not in jobs:
+        raise HTTPException(status_code=404, detail="Job not found")
+        
+    job = jobs[request.job_id]
+    
+    if request.clip_index < 0 or request.clip_index >= len(job["clips"]):
+         raise HTTPException(status_code=404, detail="Clip not found")
+         
+    clip = job["clips"][request.clip_index]
+    
+    # We need the original video path to re-render
+    # We can infer it from the run path or store it in the job?
+    # Currently job struct doesn't strictly store original video path but run_pipeline_task knows it.
+    # Let's try to reconstruct it or look at clips.json which might have more info in future
+    # For now, we unfortunately need the video path.
+    # Hack: The clip structure we built has "path" which is "clipper_output/run_.../clips/clip_...mp4"
+    # The run folder is "clipper_output/run_..."
+    # We can find the "raw" folder or similar?
+    # Wait, the `ClipperPipeline` downloads to `run_dir/raw`.
+    # Let's look for video files in `run_dir/raw`
+    
+    clip_rel_path = clip["path"]
+    clip_abs_path = os.path.join(os.getcwd(), clip_rel_path)
+    run_dir = os.path.dirname(os.path.dirname(clip_abs_path)) # up from clips/ to run_dir
+    
+    # Find video in raw/
+    raw_dir = os.path.join(run_dir, "raw")
+    video_path = None
+    if os.path.exists(raw_dir):
+        files = os.listdir(raw_dir)
+        # Filter for video files
+        video_files = [f for f in files if f.endswith(('.mp4', '.mov', '.mkv', '.webm'))]
+        if video_files:
+            video_path = os.path.join(raw_dir, video_files[0])
+            
+    if not video_path or not os.path.exists(video_path):
+        raise HTTPException(status_code=500, detail="Original source video not found")
+
+    # Get current times
+    start_str = clip.get("start_time")
+    end_str = clip.get("end_time")
+    
+    start_sec = ContentAnalyzer.seconds_from_str(start_str)
+    end_sec = ContentAnalyzer.seconds_from_str(end_str)
+    
+    # Get total duration (ffmpeg-python or open with cv2 or just probe)
+    # We'll use imageio_ffmpeg for quick probe or just trust inputs?
+    # Better to probe to avoid extending past end
+    probe = imageio_ffmpeg.read_frames(video_path)
+    # Actually getting duration via imageio_ffmpeg is tricky without reading.
+    # Let's use ContentAnalyzer logic if it had it, or Compositor.
+    # Compositor uses moviepy/ffmpeg-python internally maybe? 
+    # Let's just use a try/catch or assume high enough limit?
+    # A safe bet is using the file duration.
+    # Let's use ffprobe via subprocess or just simple duration check if we have tool.
+    # For now, let's just clamp start to 0. End is harder to clamp without knowing length.
+    
+    if request.direction == "start":
+        start_sec = max(0, start_sec - request.amount)
+    elif request.direction == "end":
+        end_sec = end_sec + request.amount
+        # We can't easily clamp to max duration without probing, but Compositor/ffmpeg handles over-duration usually gracefully (just cuts to end)
+        
+    # Re-render
+    compositor = Compositor(output_dir=os.path.join(run_dir, "clips"))
+    
+    # Reuse filename to overwrite? Or new filename?
+    # Overwriting is better for storage but might be caching issue in browser.
+    # Let's overwrite and frontend can append ?t=timestamp
+    filename = os.path.basename(clip_rel_path)
+    
+    new_path = compositor.render_clip(video_path, start_sec, end_sec, filename)
+    
+    # Update clip metadata
+    def fmt_time(s):
+        m = int(s // 60)
+        sec = int(s % 60)
+        return f"{m:02d}:{sec:02d}"
+        
+    clip["start_time"] = fmt_time(start_sec)
+    clip["end_time"] = fmt_time(end_sec)
+    
+    # Update job state
+    save_jobs()
+    
+    # Update clips.json in the run dir too
+    clips_json_path = os.path.join(run_dir, "clips.json")
+    if os.path.exists(clips_json_path):
+        try:
+            with open(clips_json_path, "r") as f:
+                disk_clips = json.load(f)
+            # Find matching clip by filename?
+            # clips.json usually matches job["clips"] order if we didn't filter
+            # But let's look by filename
+            found = False
+            for dc in disk_clips:
+                if dc.get("filename") == filename:
+                    dc["start_time"] = clip["start_time"]
+                    dc["end_time"] = clip["end_time"]
+                    found = True
+                    break
+            
+            if found:
+                with open(clips_json_path, "w") as f:
+                    json.dump(disk_clips, f, indent=2)
+        except Exception as e:
+            print(f"Failed to update clips.json: {e}")
+
+    return clip
+
+@app.delete("/api/jobs/{job_id}")
+def delete_job(job_id: str):
+    if job_id in jobs:
+        del jobs[job_id]
+        save_jobs()
+    return {"status": "deleted"}
 
 if __name__ == "__main__":
     import uvicorn

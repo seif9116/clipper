@@ -114,6 +114,45 @@ function App() {
     }
   }
 
+  const [extendingClips, setExtendingClips] = useState({})
+
+  const handleExtendClip = async (index, direction) => {
+    try {
+      setExtendingClips(prev => ({ ...prev, [index]: direction }))
+
+      const res = await axios.post(`${API_BASE}/api/extend_clip`, {
+        job_id: jobId,
+        clip_index: index,
+        direction: direction,
+        amount: 30
+      })
+
+      const updatedClip = res.data
+
+      // Update clips list
+      setClips(prev => {
+        const newClips = [...prev]
+        // Add cache buster to force video reload
+        updatedClip.path = `${updatedClip.path}?t=${Date.now()}`
+        newClips[index] = updatedClip
+        return newClips
+      })
+
+    } catch (err) {
+      console.error(err)
+      setError(err.response?.data?.detail || "Failed to extend clip")
+      // Don't change status to error, just show toast or log?
+      // For now let's just alert
+      alert("Failed to extend clip: " + (err.response?.data?.detail || err.message))
+    } finally {
+      setExtendingClips(prev => {
+        const newState = { ...prev }
+        delete newState[index]
+        return newState
+      })
+    }
+  }
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 font-sans p-8">
       <div className="max-w-4xl mx-auto">
@@ -186,8 +225,8 @@ function App() {
             <div className="space-y-12">
               <div
                 className={`border-2 border-dashed rounded-xl p-12 text-center transition-colors ${isDragging
-                    ? 'border-purple-500 bg-purple-900/20'
-                    : 'border-slate-700 bg-slate-900/50 hover:bg-slate-900/80'
+                  ? 'border-purple-500 bg-purple-900/20'
+                  : 'border-slate-700 bg-slate-900/50 hover:bg-slate-900/80'
                   }`}
                 onDragOver={handleDragOver}
                 onDragLeave={handleDragLeave}
@@ -363,13 +402,29 @@ function App() {
                         </div>
                       )}
 
-                      <div className="mt-auto">
+                      <div className="mt-auto flex flex-col gap-2">
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleExtendClip(idx, 'start')}
+                            disabled={extendingClips[idx]}
+                            className="flex-1 bg-slate-800 hover:bg-slate-700 py-2 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                          >
+                            {extendingClips[idx] === 'start' ? '...' : '+30s Start'}
+                          </button>
+                          <button
+                            onClick={() => handleExtendClip(idx, 'end')}
+                            disabled={extendingClips[idx]}
+                            className="flex-1 bg-slate-800 hover:bg-slate-700 py-2 rounded text-xs font-medium transition-colors disabled:opacity-50"
+                          >
+                            {extendingClips[idx] === 'end' ? '...' : '+30s End'}
+                          </button>
+                        </div>
                         <a
                           href={`${API_BASE}/static/${clip.path}`}
                           download
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="block w-full text-center bg-slate-800 hover:bg-slate-700 py-2 rounded text-sm font-medium transition-colors"
+                          className="block w-full text-center bg-purple-600 hover:bg-purple-700 py-2 rounded text-sm font-medium transition-colors"
                         >
                           Download
                         </a>
