@@ -55,7 +55,7 @@ class ContentAnalyzer:
         Your goal is to analyze the provided transcript and identify exactly 25 of the most viral/engaging segments.
         
         CRITICAL RULES:
-        1. **Duration**: Each clip MUST be between 30 and 60 seconds. Calculate the time difference between start_time and end_time to ensure this.
+        1. **Duration**: Each clip MUST be between 40 and 60 seconds. Calculate the time difference between start_time and end_time to ensure this.
         2. **Self-Contained**: Clips must have a clear beginning and end thought. Do not cut sentences in half.
         3. **Content**: Look for actionable advice, specific tips, "aha" moments, strong opinions, or funny moments.
         4. **Transcript**: Copy the exact transcript text for the segment into the `transcript_text` field.

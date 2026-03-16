@@ -7,6 +7,7 @@ __pycache__/
 
 # Project specific
 clipper_output/
+test_output/
 *.mp4
 *.transcript.txt
 *.jpg
