@@ -149,21 +149,15 @@ def upload_video(file: UploadFile = File(...)):
     return {"filename": unique_name, "path": file_path, "original_name": file.filename}
 
 @app.post("/api/process")
-async def process_video(background_tasks: BackgroundTasks, path: str, gemini_api_key: str, openai_api_key: str):
-    api_key = gemini_api_key
-    openai_key = openai_api_key
-    
+async def process_video(background_tasks: BackgroundTasks, path: str):
+    api_key = os.getenv("GEMINI_API_KEY")
+    openai_key = os.getenv("OPENAI_API_KEY")
+
     if not api_key:
-        api_key = os.getenv("GEMINI_API_KEY")
+        raise HTTPException(status_code=500, detail="GEMINI_API_KEY not configured on server")
 
     if not openai_key:
-        openai_key = os.getenv("OPENAI_API_KEY")
-        
-    if not api_key:
-        raise HTTPException(status_code=400, detail="Gemini API Key is required")
-    
-    if not openai_key:
-        raise HTTPException(status_code=400, detail="OpenAI API Key is required")
+        raise HTTPException(status_code=500, detail="OPENAI_API_KEY not configured on server")
 
     job_id = f"job_{int(time.time())}"
     jobs[job_id] = {"id": job_id, "status": "queued", "clips": []}

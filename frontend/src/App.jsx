@@ -15,10 +15,6 @@ function App() {
   const [clips, setClips] = useState([])
   const [error, setError] = useState(null)
 
-  const [geminiKey, setGeminiKey] = useState(sessionStorage.getItem('clipper_gemini_key') || '')
-  const [openaiKey, setOpenaiKey] = useState(sessionStorage.getItem('clipper_openai_key') || '')
-  const [showKeyModal, setShowKeyModal] = useState(!sessionStorage.getItem('clipper_gemini_key') || !sessionStorage.getItem('clipper_openai_key'))
-
   const fileInputRef = useRef(null)
 
   const handleFileChange = (e) => {
@@ -48,7 +44,7 @@ function App() {
 
       // 2. Start Process
       setStatus('processing')
-      const processRes = await axios.post(`${API_BASE}/api/process?path=${encodeURIComponent(filePath)}&gemini_api_key=${geminiKey}&openai_api_key=${openaiKey}`)
+      const processRes = await axios.post(`${API_BASE}/api/process?path=${encodeURIComponent(filePath)}`)
       setJobId(processRes.data.job_id)
 
     } catch (err) {
@@ -161,64 +157,7 @@ function App() {
             AI Video Clipper
           </h1>
           <p className="text-slate-400">Turn long videos into viral shorts in minutes.</p>
-          <button
-            onClick={() => setShowKeyModal(true)}
-            className="text-xs text-slate-500 hover:text-purple-400 mt-2 underline"
-          >
-            {geminiKey && openaiKey ? 'Update API Keys' : 'Set API Keys'}
-          </button>
         </header>
-
-        {showKeyModal && (
-          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border border-slate-700 p-8 rounded-2xl max-w-md w-full shadow-2xl">
-              <h2 className="text-2xl font-bold mb-4">API Keys Required</h2>
-              <p className="text-slate-400 mb-6 text-sm">
-                This tool uses <strong>OpenAI Whisper</strong> for accurate transcription and <strong>Google Gemini</strong> for intelligence.
-              </p>
-
-              <div className="space-y-4 mb-6">
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">Gemini API Key</label>
-                  <input
-                    type="password"
-                    placeholder="AIza..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 text-white"
-                    value={geminiKey}
-                    onChange={(e) => setGeminiKey(e.target.value)}
-                  />
-                  <a href="https://aistudio.google.com/app/apikey" target="_blank" className="text-xs text-purple-400 hover:underline mt-1 block">Get Gemini Key</a>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-slate-500 mb-1 uppercase">OpenAI API Key</label>
-                  <input
-                    type="password"
-                    placeholder="sk-..."
-                    className="w-full bg-slate-800 border border-slate-700 rounded-lg px-4 py-3 focus:outline-none focus:border-purple-500 text-white"
-                    value={openaiKey}
-                    onChange={(e) => setOpenaiKey(e.target.value)}
-                  />
-                  <a href="https://platform.openai.com/api-keys" target="_blank" className="text-xs text-purple-400 hover:underline mt-1 block">Get OpenAI Key</a>
-                </div>
-              </div>
-
-              <button
-                onClick={() => {
-                  if (geminiKey.trim() && openaiKey.trim()) {
-                    sessionStorage.setItem('clipper_gemini_key', geminiKey.trim())
-                    sessionStorage.setItem('clipper_openai_key', openaiKey.trim())
-                    setShowKeyModal(false)
-                  }
-                }}
-                disabled={!geminiKey.trim() || !openaiKey.trim()}
-                className="w-full bg-purple-600 hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-bold py-3 rounded-lg transition-colors"
-              >
-                Save Keys
-              </button>
-            </div>
-          </div>
-        )}
 
         <main>
           {status === 'idle' && (
